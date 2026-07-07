@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>임용쏙 — 가정 임용시험 AI 문제풀이</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='0.9em' font-size='90'>📝</text></svg>">
+<link rel="stylesheet" href="css/styles.css?v=7">
+</head>
+<body>
+
+<header>
+  <div class="logo">📝 임용쏙</div>
+  <div class="slogan">기출 경향은 쏙쏙, 합격까지 쏙 — 가정 전공 · 교육학</div>
+  <div class="header-right">
+    <span class="credit">© 2026 Created by Eunsoon</span>
+    <button class="btn-settings" id="btnSettings">⚙️ 설정</button>
+  </div>
+</header>
+
+<nav class="tabs">
+  <button class="tab-btn active" data-tab="solve">📝 문제풀이</button>
+  <button class="tab-btn" data-tab="stats">📊 학습통계</button>
+  <button class="tab-btn" data-tab="notes">📕 오답노트</button>
+  <button class="tab-btn" data-tab="trends">📰 교육 트렌드</button>
+  <button class="tab-btn" data-tab="guide">📖 가이드</button>
+</nav>
+
+<main>
+
+<!-- ========== 문제풀이 ========== -->
+<section class="view active" id="view-solve">
+  <div class="card">
+    <div class="controls">
+      <div class="ctrl">
+        <label>과목</label>
+        <select id="selSubject">
+          <option value="mix-home">🎲 가정 전공 + 교육학 (랜덤)</option>
+          <option value="mix-lib">🎲 사서 전공 + 교육학 (랜덤)</option>
+          <option value="home" selected>🏠 가정 전공</option>
+          <option value="lib">📚 사서 전공 (문헌정보학)</option>
+          <option value="edu">🎓 교육학</option>
+        </select>
+      </div>
+      <div class="ctrl">
+        <label>문제 유형</label>
+        <select id="selType"></select>
+      </div>
+      <div class="ctrl">
+        <label>영역</label>
+        <select id="selArea"></select>
+      </div>
+      <button class="btn-primary" id="btnGenerate">🎲 문제 출제</button>
+    </div>
+  </div>
+
+  <div class="busy-bar hidden" id="busyBar"></div>
+  <div class="error-bar hidden" id="errorBar"></div>
+
+  <div class="card hidden" id="cardQuestion">
+    <div class="q-top">
+      <span id="qBadges"></span>
+      <span class="q-timer" id="qTimer">⏱ 00:00</span>
+    </div>
+    <div class="stimulus hidden" id="qStimulus"></div>
+    <div class="q-text" id="qText"></div>
+    <div class="conditions hidden" id="qConditions"></div>
+    <div id="answerWrap"></div>
+    <div class="q-actions">
+      <button class="btn-primary" id="btnGrade">✅ 채점하기</button>
+      <button class="btn-secondary" id="btnReveal">👀 정답 보기 (채점 없이)</button>
+    </div>
+  </div>
+
+  <div class="card hidden" id="cardResult">
+    <div id="resultBody"></div>
+    <div class="q-actions">
+      <button class="btn-primary" id="btnNext">🎲 다음 문제</button>
+      <button class="btn-secondary" id="btnPrint">🖨️ 인쇄 · PDF 저장</button>
+      <button class="btn-secondary hidden" id="btnSaveNote">📥 이 문제 오답노트에 저장</button>
+    </div>
+  </div>
+</section>
+
+<!-- ========== 학습통계 ========== -->
+<section class="view" id="view-stats">
+  <div class="card" id="statsBody"></div>
+</section>
+
+<!-- ========== 오답노트 ========== -->
+<section class="view" id="view-notes">
+  <div id="notesBody"></div>
+</section>
+
+<!-- ========== 교육 트렌드 ========== -->
+<section class="view" id="view-trends">
+  <div id="trendsBody"></div>
+</section>
+
+<!-- ========== 가이드 ========== -->
+<section class="view" id="view-guide">
+  <div class="card guide">
+    <h3>📝 임용쏙이란?</h3>
+    <p>중등교사 임용시험을 준비하는 수험생을 위한 <b>AI 기출 유사 문제풀이 도구</b>입니다.
+    <b>가정 전공</b>과 <b>사서 전공(문헌정보학)</b>, 그리고 두 전공이 공통으로 치르는 <b>교육학</b>을 지원합니다.
+    2016~2026학년도 기출 경향을 반영해 실제 시험과 동일한 형식으로 출제하고, 실제 채점 기준으로 점수를 매깁니다.</p>
+    <p>과목 선택에서 <b>「가정/사서 전공 + 교육학 랜덤」</b>을 고르면 본인 전공과 교육학이 실제 시험 비중대로 섞여 나옵니다.
+    사서 전공은 자료조직·정보서비스·정보검색·도서관경영·독서교육·정보활용교육·학교도서관법규·서지학 8개 영역을 다룹니다.</p>
+
+    <h3>📋 실제 임용시험 구성 (그대로 반영)</h3>
+    <table>
+      <tr><th>교시</th><th>과목</th><th>유형</th><th>배점</th></tr>
+      <tr><td>1교시</td><td>교육학</td><td>논술형 1문항 (60분)</td><td>20점 (내용 15 + 구성·표현 5)</td></tr>
+      <tr><td>2교시</td><td>전공 A</td><td>기입형 4 + 서술형 8 (90분)</td><td>40점 (기입 2점 / 서술 4점)</td></tr>
+      <tr><td>3교시</td><td>전공 B</td><td>기입형 2 + 서술형 9 (90분)</td><td>40점 (기입 2점 / 서술 4점)</td></tr>
+    </table>
+
+    <h3>🚀 사용 방법</h3>
+    <ol>
+      <li>우측 상단 <b>⚙️ 설정</b>에서 AI API 키 등록 (Claude 권장)</li>
+      <li>과목·유형·영역을 고르고 <b>🎲 문제 출제</b> — 랜덤으로 두면 실제 시험 비중대로 섞여 나옵니다</li>
+      <li>권장 시간(기입형 2분 / 서술형 7분 / 논술 60분) 안에 답안 작성 후 <b>✅ 채점하기</b></li>
+      <li>점수·채점 기준표·모범답안·해설·키포인트·자주 하는 실수까지 즉시 확인</li>
+      <li>감점된 문항은 <b>📕 오답노트</b>에 자동 저장 — 같은 주제로 유사 문제 재출제 가능</li>
+      <li><b>📊 학습통계</b>에서 영역별 득점률을 보고 약한 영역을 집중 공략</li>
+    </ol>
+
+    <h3>📰 교육 트렌드 자동 반영</h3>
+    <p>실제 교육학 논술은 항상 최신 교육 정책·이슈(AI 디지털교과서, 고교학점제, 2028 대입개편 등)를 제시문 맥락으로 활용합니다.
+    임용쏙은 <b>최신 교육 동향 데이터</b>를 내장하고 있으며, 「📰 교육 트렌드」 탭에서 <b>🔄 AI 웹검색으로 갱신</b>을 누르면
+    Claude·Gemini의 실시간 웹검색으로 최신 뉴스·정책·새 교육과정 비전을 가져와 교육학·가정과 교육론 출제에 자동 반영합니다.
+    2주에 한 번 정도 갱신하는 것을 권장합니다.</p>
+
+    <h3>🔍 문제 오류 2단계 검증</h3>
+    <p>출제된 문항은 별도의 <b>검토위원 AI</b>가 ① 학문적 정확성 ② 정답 유일성 ③ 조건-모범답안 일치 ④ 배점 합계를
+    자동 점검한 뒤 제공됩니다 (설정에서 켜고 끌 수 있음, 기본 ON). 검증 통과 문항에는 <b>✅ 검증 완료</b> 배지가 붙습니다.</p>
+
+    <h3>✍️ 채점 기준 (실제 시험과 동일)</h3>
+    <ul>
+      <li><b>기입형(2점)</b>: 정확한 용어만 정답, 부분점수 없음 (답 2개 요구 시 각 1점)</li>
+      <li><b>서술형(4점)</b>: 채점 요소별 부분점수, &lt;작성 방법&gt; 조건 위반 시 해당 요소 0점</li>
+      <li><b>논술형(20점)</b>: 내용 15점 (요소별) + 논술의 구성·표현 5점</li>
+    </ul>
+
+    <h3>🔑 API 키 안내 (BYOK)</h3>
+    <ul>
+      <li><b>Claude</b> (권장): <a href="https://console.anthropic.com" target="_blank">console.anthropic.com</a> → API Keys</li>
+      <li><b>Gemini</b>: <a href="https://aistudio.google.com/apikey" target="_blank">aistudio.google.com/apikey</a></li>
+      <li><b>OpenAI</b>: <a href="https://platform.openai.com/api-keys" target="_blank">platform.openai.com/api-keys</a></li>
+    </ul>
+    <p>키는 이 브라우저(localStorage)에만 저장되며 외부로 전송되지 않습니다. 문제 1개당 출제+검증+채점 3회 호출이 이루어집니다.</p>
+
+    <h3>⚠️ 유의사항</h3>
+    <ul>
+      <li>AI가 생성하는 <b>기출 '유사' 문제</b>이며 실제 기출문제 원문이 아닙니다. 실제 기출은 한국교육과정평가원 자료를 함께 확인하세요.</li>
+      <li>2단계 검증을 거치지만 AI 특성상 드물게 오류가 있을 수 있습니다. 답이 의심되면 전공 서적으로 교차 확인하세요.</li>
+      <li>학습 기록은 이 브라우저에만 저장됩니다. 다른 기기와 공유되지 않습니다.</li>
+    </ul>
+  </div>
+</section>
+
+</main>
+
+<!-- 인쇄 전용 영역 (화면에는 숨김, @media print에서만 표시) -->
+<div id="printArea"></div>
+
+<!-- ========== 설정 모달 ========== -->
+<div class="modal-overlay hidden" id="settingsModal">
+  <div class="modal">
+    <h2>⚙️ AI 설정</h2>
+    <div class="provider-row">
+      <label class="provider-opt"><input type="radio" name="provider" value="claude" checked>🟠 Claude (권장)</label>
+      <label class="provider-opt"><input type="radio" name="provider" value="gemini">🔵 Gemini</label>
+      <label class="provider-opt"><input type="radio" name="provider" value="openai">🟢 OpenAI</label>
+    </div>
+    <div class="field">
+      <label>Claude API 키</label>
+      <input type="password" id="keyClaude" placeholder="sk-ant-...">
+    </div>
+    <div class="field">
+      <label>Gemini API 키</label>
+      <input type="password" id="keyGemini" placeholder="AIza...">
+    </div>
+    <div class="field">
+      <label>OpenAI API 키</label>
+      <input type="password" id="keyOpenai" placeholder="sk-...">
+    </div>
+    <div class="field">
+      <label>모델 (선택한 제공자용, 비우면 기본값)</label>
+      <input type="text" id="modelInput" placeholder="비우면 기본값: claude-sonnet-4-6">
+      <div class="hint">기본값 — Claude: claude-sonnet-4-6 / Gemini: gemini-2.0-flash / OpenAI: gpt-4o</div>
+    </div>
+    <div class="check-row">
+      <input type="checkbox" id="chkVerify" checked>
+      <label for="chkVerify">🔍 2단계 출제 검증 (검토위원 AI 오류 점검)</label>
+    </div>
+    <div class="check-hint">켜면 문제 품질이 좋아지지만 문제당 AI 호출이 1회 늘어납니다.</div>
+    <div class="modal-actions">
+      <button class="btn-secondary" id="btnTest">🔌 연결 테스트</button>
+      <button class="btn-secondary" id="btnCloseSettings">취소</button>
+      <button class="btn-primary" id="btnSaveSettings">저장</button>
+    </div>
+    <div class="test-result" id="testResult"></div>
+  </div>
+</div>
+
+<script src="js/topics.js?v=7"></script>
+<script src="js/settings.js?v=7"></script>
+<script src="js/ai.js?v=7"></script>
+<script src="js/trends.js?v=7"></script>
+<script src="js/app.js?v=7"></script>
+</body>
+</html>
