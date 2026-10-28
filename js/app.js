@@ -23,6 +23,7 @@ function switchTab(name) {
   document.querySelectorAll('.view').forEach(v => v.classList.toggle('active', v.id === 'view-' + name));
   if (name === 'stats') renderStats();
   if (name === 'notes') renderNotes();
+  if (name === 'concepts') renderConcepts();
   if (name === 'trends') renderTrends();
 }
 
@@ -233,6 +234,8 @@ async function onGrade() {
     const g = await gradeAnswer(S.q, ans);
     S.phase = 'done';
     recordStat(S.q, g);
+    // 채점한 모든 문항의 키포인트·해설을 개념노트에 누적 (만점 문항 포함)
+    try { saveConceptFromQuestion(S.q, g); } catch (e) { console.warn('개념노트 저장 실패', e); }
     if (g.score < g.max) saveNote(S.q, ans, g);
     renderResult(g, ans);
   } catch (e) {
@@ -311,7 +314,21 @@ function renderResult(g, userAnswer) {
       q._issues.map(i => `<li>${esc(i)}</li>`).join('') + '</ul></div>';
   }
 
+  html += `<div id="theoryBox"></div>`;
+
   $('resultBody').innerHTML = html;
+
+  // 이 주제에 이미 정리된 이론이 있으면 AI 호출 없이 바로 보여줌
+  const cached = hasTheoryFor(q);
+  const tBtn = $('btnTheory');
+  tBtn.disabled = false;
+  if (cached) {
+    renderTheorySection(cached, true);
+    tBtn.textContent = '🔄 이론 다시 정리';
+  } else {
+    tBtn.textContent = '📘 이 문제 이론 정리';
+  }
+
   // 채점 없이 정답만 본 경우에만 '오답노트에 저장' 버튼 노출 (감점 문항은 자동 저장됨)
   const saveBtn = $('btnSaveNote');
   saveBtn.classList.toggle('hidden', !!g);
@@ -321,6 +338,42 @@ function renderResult(g, userAnswer) {
   $('btnReveal').disabled = true;
   $('cardResult').classList.remove('hidden');
   $('cardResult').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+/* ---------- 📘 이론 정리 ---------- */
+function renderTheorySection(th, fromCache) {
+  const box = $('theoryBox');
+  if (!box) return;
+  box.innerHTML = `<div class="sec">` +
+    (fromCache ? `<div class="th-cache">📚 이 주제에 이미 정리해 둔 이론입니다 (AI 호출 없음)</div>` : '') +
+    conceptTheoryHtml(th) +
+    `<div class="th-saved">✅ 📚 개념노트 · <b>${esc(S.q.areaName)}</b> › <b>${esc(S.q.topic)}</b> 에 저장했습니다</div>
+    </div>`;
+}
+
+async function onTheory() {
+  if (!S.q || S.phase !== 'done') return;
+  if (!hasKey()) { showError(humanizeError(new Error('NOKEY'))); openSettings(); return; }
+  const btn = $('btnTheory');
+  btn.disabled = true;
+  setBusy('📘 이 문항의 이론을 교재처럼 정리하는 중...');
+  hideError();
+  try {
+    const th = await explainTheory(S.q);
+    // 이 문항의 키포인트·해설도 함께 개념노트에 누적 (미채점 문항 대비)
+    try { saveConceptFromQuestion(S.q, S._lastGrade); } catch (e) { console.warn(e); }
+    attachTheory(S.q, th);
+    S.q._theory = th;
+    renderTheorySection(th, false);
+    btn.textContent = '🔄 이론 다시 정리';
+    $('theoryBox').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  } catch (e) {
+    console.error(e);
+    showError(humanizeError(e));
+  } finally {
+    btn.disabled = false;
+    setBusy(null);
+  }
 }
 
 /* ---------- 인쇄용 학습지 HTML 생성 ---------- */
@@ -338,6 +391,19 @@ function buildPrintSheet(q, g) {
   h += `</div>`;
   if (q.explanation) h += `<div class="ps-sec"><b>📖 해설</b><div>${nl2br(q.explanation)}</div></div>`;
   if ((q.keyPoints || []).length) h += `<div class="ps-sec"><b>💡 핵심 키포인트</b><ul>${q.keyPoints.map(k => `<li>${esc(k)}</li>`).join('')}</ul></div>`;
+  // 이론 정리를 받아 둔 문항이면 학습지에도 함께 출력
+  const th = q._theory || hasTheoryFor(q);
+  if (th) {
+    h += `<div class="ps-sec"><b>📘 이론 정리 — ${esc(th.concept || '')}</b>`;
+    if (th.oneLine) h += `<div><i>${esc(th.oneLine)}</i></div>`;
+    if (th.definition) h += `<div>${nl2br(th.definition)}</div>`;
+    if (th.scholars) h += `<div>· 학자·배경: ${nl2br(th.scholars)}</div>`;
+    if ((th.elements || []).length) h += `<ul>${th.elements.map(x => `<li><b>${esc(x.name || '')}</b>${x.desc ? ' — ' + esc(x.desc) : ''}</li>`).join('')}</ul>`;
+    if ((th.compare || []).length) h += `<div>⚠️ 혼동 개념</div><ul>${th.compare.map(x => `<li><b>${esc(x.term || '')}</b> — ${esc(x.diff || '')}</li>`).join('')}</ul>`;
+    if ((th.related || []).length) h += `<div>🔗 관련 이론</div><ul>${th.related.map(x => `<li><b>${esc(x.name || '')}</b>${x.why ? ' — ' + esc(x.why) : ''}</li>`).join('')}</ul>`;
+    if (th.examPoint) h += `<div>🎯 출제 포인트: ${nl2br(th.examPoint)}</div>`;
+    h += `</div>`;
+  }
   if ((q.commonMistakes || []).length) h += `<div class="ps-sec"><b>⚠️ 자주 하는 실수</b><ul>${q.commonMistakes.map(m => `<li>${esc(m)}</li>`).join('')}</ul></div>`;
   if (q.trend) h += `<div class="ps-sec"><b>📅 기출 연계 경향</b><div>${nl2br(q.trend)}</div></div>`;
   h += `</div>`;
@@ -692,6 +758,7 @@ document.addEventListener('DOMContentLoaded', () => {
   $('btnReveal').addEventListener('click', onReveal);
   $('btnNext').addEventListener('click', () => onGenerate());
   $('btnPrint').addEventListener('click', printCurrent);
+  $('btnTheory').addEventListener('click', onTheory);
   $('btnSaveNote').addEventListener('click', saveRevealToNote);
   $('btnSettings').addEventListener('click', openSettings);
   $('btnCloseSettings').addEventListener('click', closeSettings);

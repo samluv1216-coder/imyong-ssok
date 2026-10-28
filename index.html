@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>임용쏙 — 가정 임용시험 AI 문제풀이</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='0.9em' font-size='90'>📝</text></svg>">
-<link rel="stylesheet" href="css/styles.css?v=7">
+<link rel="stylesheet" href="css/styles.css?v=8">
 </head>
 <body>
 
@@ -22,6 +22,7 @@
   <button class="tab-btn active" data-tab="solve">📝 문제풀이</button>
   <button class="tab-btn" data-tab="stats">📊 학습통계</button>
   <button class="tab-btn" data-tab="notes">📕 오답노트</button>
+  <button class="tab-btn" data-tab="concepts">📚 개념노트</button>
   <button class="tab-btn" data-tab="trends">📰 교육 트렌드</button>
   <button class="tab-btn" data-tab="guide">📖 가이드</button>
 </nav>
@@ -76,6 +77,7 @@
     <div id="resultBody"></div>
     <div class="q-actions">
       <button class="btn-primary" id="btnNext">🎲 다음 문제</button>
+      <button class="btn-secondary" id="btnTheory">📘 이 문제 이론 정리</button>
       <button class="btn-secondary" id="btnPrint">🖨️ 인쇄 · PDF 저장</button>
       <button class="btn-secondary hidden" id="btnSaveNote">📥 이 문제 오답노트에 저장</button>
     </div>
@@ -90,6 +92,11 @@
 <!-- ========== 오답노트 ========== -->
 <section class="view" id="view-notes">
   <div id="notesBody"></div>
+</section>
+
+<!-- ========== 개념노트 ========== -->
+<section class="view" id="view-concepts">
+  <div id="conceptsBody"></div>
 </section>
 
 <!-- ========== 교육 트렌드 ========== -->
@@ -122,8 +129,29 @@
       <li>권장 시간(기입형 2분 / 서술형 7분 / 논술 60분) 안에 답안 작성 후 <b>✅ 채점하기</b></li>
       <li>점수·채점 기준표·모범답안·해설·키포인트·자주 하는 실수까지 즉시 확인</li>
       <li>감점된 문항은 <b>📕 오답노트</b>에 자동 저장 — 같은 주제로 유사 문제 재출제 가능</li>
+      <li>푼 문제의 <b>핵심 키포인트·해설</b>은 <b>📚 개념노트</b>에 주제별로 자동 정리 (만점 문항도 포함)</li>
       <li><b>📊 학습통계</b>에서 영역별 득점률을 보고 약한 영역을 집중 공략</li>
     </ol>
+
+    <h3>📚 개념노트 — 문제에 나온 이론만 따로 모아 보기</h3>
+    <p>문제를 풀고 채점하면 그 문항의 <b>💡 핵심 키포인트</b>, <b>📖 해설</b>, <b>⚠️ 자주 하는 실수</b>, <b>📅 기출 경향</b>이
+    <b>영역 › 주제</b> 순으로 개념노트에 자동 정리됩니다. 같은 주제가 여러 번 나오면 <b>하나로 합쳐지고</b> 중복 키포인트는 걸러지므로,
+    풀면 풀수록 그 주제의 정리 내용이 두꺼워집니다. 점수와 무관하게 <b>채점한 모든 문항</b>이 쌓입니다.</p>
+    <p>주제·키포인트·해설 본문을 <b>검색</b>할 수 있고, 보이는 주제 전체 또는 한 주제만 <b>A4 인쇄·PDF 저장</b>해 서브노트로 쓸 수 있습니다.
+    각 주제에서 <b>🎲 이 주제 문제 풀기</b>를 누르면 같은 주제로 새 문제가 출제됩니다.</p>
+
+    <h3>📘 이론 정리 (AI 호출 1회 추가)</h3>
+    <p>결과 화면의 <b>「📘 이 문제 이론 정리」</b>를 누르면, 문제 풀이 해설과 별도로 그 문항이 다루는 <b>이론 자체</b>를 교재처럼 정리해 줍니다.</p>
+    <ul>
+      <li><b>한 줄 정의</b> → 시험장에서 떠올릴 압축 문장</li>
+      <li><b>개념 정의와 배경</b>, <b>학자·이론적 계보</b></li>
+      <li><b>구성 요소·유형·단계</b></li>
+      <li><b>⚠️ 혼동하기 쉬운 개념 비교표</b> — 수험생이 실제로 헷갈리는 쌍만</li>
+      <li><b>🔗 함께 알아야 할 이론</b>, <b>🎯 임용 출제 포인트</b>, <b>🧠 암기 문장</b></li>
+    </ul>
+    <p>정리된 이론은 개념노트의 해당 주제에 저장되고, 학습지 인쇄에도 함께 출력됩니다.
+    <b>같은 주제를 다시 풀면 저장해 둔 이론이 AI 호출 없이 바로 표시</b>되므로 비용이 중복되지 않습니다 (다시 받고 싶으면 🔄 버튼).
+    확실하지 않은 학자명·연도는 비워 두도록 지시해 두었지만, 중요한 내용은 전공 서적으로 교차 확인하세요.</p>
 
     <h3>📰 교육 트렌드 자동 반영</h3>
     <p>실제 교육학 논술은 항상 최신 교육 정책·이슈(AI 디지털교과서, 고교학점제, 2028 대입개편 등)를 제시문 맥락으로 활용합니다.
@@ -148,7 +176,8 @@
       <li><b>Gemini</b>: <a href="https://aistudio.google.com/apikey" target="_blank">aistudio.google.com/apikey</a></li>
       <li><b>OpenAI</b>: <a href="https://platform.openai.com/api-keys" target="_blank">platform.openai.com/api-keys</a></li>
     </ul>
-    <p>키는 이 브라우저(localStorage)에만 저장되며 외부로 전송되지 않습니다. 문제 1개당 출제+검증+채점 3회 호출이 이루어집니다.</p>
+    <p>키는 이 브라우저(localStorage)에만 저장되며 외부로 전송되지 않습니다. 문제 1개당 출제+검증+채점 3회 호출이 이루어지며,
+    <b>📘 이론 정리</b>를 누른 경우에만 1회가 더 발생합니다 (개념노트에 쌓이는 키포인트·해설 정리는 추가 호출 없이 무료).</p>
 
     <h3>⚠️ 유의사항</h3>
     <ul>
@@ -204,10 +233,11 @@
   </div>
 </div>
 
-<script src="js/topics.js?v=7"></script>
-<script src="js/settings.js?v=7"></script>
-<script src="js/ai.js?v=7"></script>
-<script src="js/trends.js?v=7"></script>
-<script src="js/app.js?v=7"></script>
+<script src="js/topics.js?v=8"></script>
+<script src="js/settings.js?v=8"></script>
+<script src="js/ai.js?v=8"></script>
+<script src="js/trends.js?v=8"></script>
+<script src="js/concepts.js?v=8"></script>
+<script src="js/app.js?v=8"></script>
 </body>
 </html>
