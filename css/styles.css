@@ -239,6 +239,15 @@ main { max-width: 860px; margin: 0 auto; padding: 20px 16px 80px; }
 }
 .cn-stat { font-size: 13.5px; color: var(--muted); margin-right: auto; }
 .cn-stat b { color: var(--ink); }
+.cn-import { background: #fffbeb; border-color: #fde68a; }
+.cn-import-t { font-size: 15px; font-weight: 800; color: #92400e; margin-bottom: 6px; }
+.cn-import p { font-size: 13.5px; color: #78350f; margin-bottom: 12px; }
+.cn-lost { background: #f9fafb; }
+.cn-lost-t { font-size: 14px; font-weight: 800; color: var(--muted); margin-bottom: 4px; }
+.cn-lost p { font-size: 13px; color: var(--muted); margin-bottom: 8px; }
+.cn-lost-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.cn-chip { font-size: 12px; background: #fff; border: 1px solid var(--line); border-radius: 999px; padding: 3px 10px; color: var(--muted); }
+.cn-chip.more { background: #f3f4f6; font-weight: 700; }
 .cn-group { margin-bottom: 18px; }
 .cn-group-head {
   font-size: 14px; font-weight: 800; color: var(--brand-dark);

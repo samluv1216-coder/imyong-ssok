@@ -50,13 +50,14 @@ function mergeLines(oldArr, newArr, cap) {
 function conceptKey(q) { return (q.areaId || q.areaName || '?') + '|' + (q.topic || '?'); }
 
 /* ---------- 문항 → 개념노트 저장(병합) ---------- */
-// g: 채점 결과(없으면 null). 반환: 해당 주제 엔트리
-function saveConceptFromQuestion(q, g) {
+// g: 채점 결과(없으면 null) / when: 과거 기록을 가져올 때의 원래 시각(없으면 지금)
+// 반환: 해당 주제 엔트리
+function saveConceptFromQuestion(q, g, when) {
   if (!q) return null;
   const arr = getConcepts();
   const key = conceptKey(q);
   let e = arr.find(x => x.key === key);
-  const now = Date.now();
+  const now = when || Date.now();
 
   if (!e) {
     e = {
@@ -70,7 +71,9 @@ function saveConceptFromQuestion(q, g) {
     arr.push(e);
   }
 
-  e.lastT = now;
+  // 과거 기록을 섞어 넣어도 최초/최근 학습일이 뒤집히지 않게
+  e.t = Math.min(e.t || now, now);
+  e.lastT = Math.max(e.lastT || 0, now);
   e.keyPoints = mergeLines(e.keyPoints, q.keyPoints, MAX_KEYPOINTS);
   e.commonMistakes = mergeLines(e.commonMistakes, q.commonMistakes, 12);
   if (q.trend) e.trend = q.trend;
@@ -79,21 +82,24 @@ function saveConceptFromQuestion(q, g) {
   if (q.explanation) {
     const n = normLine(q.explanation).slice(0, 120);
     if (!e.explanations.some(x => normLine(x.text).slice(0, 120) === n)) {
-      e.explanations.unshift({
+      e.explanations.push({
         t: now,
         text: q.explanation,
         question: String(q.question || '').slice(0, 300),
         type: q.type || '',
       });
+      // 과거 기록을 가져와도 최신순이 유지되도록 정렬 후 자른다
+      e.explanations.sort((a, b) => b.t - a.t);
       e.explanations = e.explanations.slice(0, MAX_EXPLANATIONS);
     }
   }
 
-  e.runs.unshift({
+  e.runs.push({
     t: now,
     score: g && typeof g.score === 'number' ? g.score : null,
-    max: g ? g.max : (q.points || null),
+    max: g && typeof g.max === 'number' ? g.max : (q.points || null),
   });
+  e.runs.sort((a, b) => b.t - a.t);
   e.runs = e.runs.slice(0, 20);
 
   putConcepts(arr);
@@ -133,6 +139,62 @@ function resetConcepts() {
   if (!confirm('개념노트를 모두 삭제할까요? (되돌릴 수 없습니다)')) return;
   localStorage.removeItem(CONCEPTS_KEY);
   renderConcepts();
+}
+
+/* ---------- 📥 이전 기록 가져오기 ----------
+   개념노트는 2026-10-28에 추가됐으므로 그 전에 푼 문항은 안 쌓여 있다.
+   📕 오답노트는 문항 q 전체(키포인트·해설·실수·경향)를 보관하므로 그대로 옮길 수 있다.
+   반면 📊 학습통계는 점수·주제 이름만 저장해서 내용 복구가 불가능하다.      */
+
+const IMPORTED_KEY = 'imyongssok_concepts_imported_v1';
+
+function getImportedIds() {
+  try { return JSON.parse(localStorage.getItem(IMPORTED_KEY)) || []; } catch (e) { return []; }
+}
+
+// 아직 개념노트로 안 옮긴 오답노트 문항
+function pendingNotes() {
+  if (typeof getNotes !== 'function') return [];
+  const done = getImportedIds();
+  return getNotes().filter(n => n && n.q && n.q.topic && done.indexOf(n.id) < 0);
+}
+
+function importFromNotes() {
+  const pend = pendingNotes();
+  if (!pend.length) return { added: 0, topics: 0 };
+  // 오래된 것부터 넣어야 학습 이력 순서가 실제 순서대로 남는다
+  const ordered = pend.slice().sort((a, b) => (a.t || 0) - (b.t || 0));
+  const before = getConcepts().length;
+  const done = getImportedIds();
+  ordered.forEach(n => {
+    try {
+      saveConceptFromQuestion(n.q, n.g, n.t);
+      done.push(n.id);
+    } catch (e) { console.warn('가져오기 실패', n.id, e); }
+  });
+  localStorage.setItem(IMPORTED_KEY, JSON.stringify(done.slice(-500)));
+  return { added: ordered.length, topics: getConcepts().length - before };
+}
+
+// 학습통계에만 있고 내용이 안 남은 주제 (= 가져올 수 없는 것들)
+function contentlessTopics() {
+  if (typeof getStats !== 'function') return [];
+  const have = {};
+  getConcepts().forEach(e => { have[e.topic] = 1; });
+  const out = [], seen = {};
+  getStats().forEach(r => {
+    if (r.topic && !have[r.topic] && !seen[r.topic]) { seen[r.topic] = 1; out.push(r.topic); }
+  });
+  return out;
+}
+
+function onImportNotes() {
+  const r = importFromNotes();
+  renderConcepts();
+  const lost = contentlessTopics().length;
+  alert(`📥 오답노트에서 ${r.added}개 문항을 가져왔습니다. (주제 ${r.topics}개 새로 생김)` +
+    (lost ? `\n\n⚠️ 학습통계에 남은 주제 ${lost}개는 내용이 저장돼 있지 않아 가져올 수 없습니다.\n` +
+      `(이전 버전은 만점 문항의 키포인트·해설을 보관하지 않았습니다. 그 주제를 다시 풀면 채워집니다.)` : ''));
 }
 
 /* ---------- 이론 정리 HTML (결과 화면·개념노트 공용) ---------- */
@@ -204,7 +266,9 @@ function renderConcepts() {
   if (!el) return;
   const all = getConcepts();
 
-  if (!all.length) {
+  const pend = pendingNotes().length;
+
+  if (!all.length && !pend) {
     el.innerHTML = `<div class="card"><div class="empty">개념노트가 비어 있습니다.<br>
       문제를 풀고 <b>채점</b>하면 그 문항의 <b>핵심 키포인트·해설</b>이 주제별로 자동 정리됩니다. 📚<br>
       결과 화면의 <b>「📘 이론 정리」</b>를 누르면 개념 정의·학자·혼동 개념 비교까지 함께 쌓입니다.</div></div>`;
@@ -214,7 +278,15 @@ function renderConcepts() {
   const subjects = [];
   all.forEach(e => { if (e.subject && subjects.indexOf(e.subject) < 0) subjects.push(e.subject); });
 
-  el.innerHTML = `<div class="card cn-toolbar">
+  // 개념노트가 생기기 전에 푼 문항 안내 (오답노트에서 가져올 수 있음)
+  const importBanner = pend ? `<div class="card cn-import">
+    <div class="cn-import-t">📥 이전에 푼 문항 ${pend}개를 가져올 수 있습니다</div>
+    <p>개념노트는 나중에 추가된 기능이라 그 전에 푼 문항은 쌓여 있지 않습니다.
+    <b>📕 오답노트</b>에는 문항 내용이 그대로 남아 있어 <b>키포인트·해설·자주 하는 실수</b>를 지금 개념노트로 옮길 수 있습니다.</p>
+    <button class="btn-primary" onclick="onImportNotes()">📥 오답노트에서 ${pend}개 가져오기</button>
+  </div>` : '';
+
+  el.innerHTML = importBanner + `<div class="card cn-toolbar">
     <div class="cn-row">
       <input type="search" id="cnSearch" class="cn-search" placeholder="🔍 주제·키포인트·해설 내용 검색"
              value="${esc(CS.q)}" oninput="setConceptSearch(this.value)" autocomplete="off">
@@ -234,9 +306,27 @@ function renderConcepts() {
       <button class="btn-ghost danger" onclick="resetConcepts()">🗑️ 전체 삭제</button>
     </div>
   </div>
-  <div id="cnList"></div>`;
+  <div id="cnList"></div>
+  <div id="cnLost"></div>`;
 
   renderConceptList();
+  renderLostNotice();
+}
+
+// 학습통계에만 있고 내용이 안 남은 주제 안내 (솔직하게 — 없는 걸 지어내지 않음)
+function renderLostNotice() {
+  const box = $('cnLost');
+  if (!box) return;
+  const lost = contentlessTopics();
+  if (!lost.length) { box.innerHTML = ''; return; }
+  const head = lost.slice(0, 12);
+  box.innerHTML = `<div class="card cn-lost">
+    <div class="cn-lost-t">ℹ️ 내용이 남지 않은 주제 ${lost.length}개</div>
+    <p>학습통계에는 있지만 <b>키포인트·해설이 저장돼 있지 않아 가져올 수 없는</b> 주제입니다.
+    이전 버전은 <b>점수만</b> 기록하고 만점 문항의 내용은 보관하지 않았습니다. 해당 주제를 다시 풀면 그때부터 채워집니다.</p>
+    <div class="cn-lost-chips">${head.map(t => `<span class="cn-chip">${esc(t)}</span>`).join('')}${
+      lost.length > head.length ? `<span class="cn-chip more">외 ${lost.length - head.length}개</span>` : ''}</div>
+  </div>`;
 }
 
 // 목록 + 개수 줄만 갱신 (검색창은 건드리지 않음 — 한글 IME 보호)
@@ -254,7 +344,9 @@ function renderConceptList() {
   }
 
   if (!shown.length) {
-    list.innerHTML = `<div class="card"><div class="empty">검색 결과가 없습니다.</div></div>`;
+    const searching = CS.q || CS.filter !== 'all';
+    list.innerHTML = `<div class="card"><div class="empty">${searching ? '검색 결과가 없습니다.'
+      : '아직 정리된 주제가 없습니다.<br>위에서 이전 기록을 가져오거나, 문제를 풀고 채점하면 쌓입니다.'}</div></div>`;
     return;
   }
 
